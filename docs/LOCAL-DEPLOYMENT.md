@@ -7,8 +7,7 @@ This guide is for the `mileadev/archestra` fork. It extends Archestra's existing
 From the repository root:
 
 ```bash
-cp deploy/local/.env.example deploy/local/.env
-docker compose --env-file deploy/local/.env -f deploy/local/compose.yaml up -d
+bash deploy/local/up.sh
 ```
 
 The example defaults to upstream stable `archestra/platform:1.4.9`, **without this fork's code changes**. To deploy the modified fork, first run:
@@ -17,7 +16,9 @@ The example defaults to upstream stable `archestra/platform:1.4.9`, **without th
 docker build --target unified -t archestra-fork:local -f platform/Dockerfile platform
 ```
 
-Set `ARCHESTRA_IMAGE=archestra-fork:local` in `deploy/local/.env`, then run the Compose command above. The build requires large native toolchain/image downloads and has not been executed in this environment.
+Set `ARCHESTRA_IMAGE=archestra-fork:local` in `deploy/local/.env`, then run `bash deploy/local/up.sh` again. The build requires large native toolchain/image downloads and has not been executed in this environment.
+
+The startup script generates a random administrator password in the gitignored `deploy/local/.env` (mode 0600). Sign in as `admin@example.com`; retrieve the initial password locally from that file. Change it after first sign-in. It is generated only when no password is configured, so it is stable across restarts. The Docker image must not be deployed with the upstream quickstart's public default credentials.
 
 This quickstart mounts the Docker socket and must be treated as host-privileged. Keep ports on `127.0.0.1`. Do not publish the Docker API, Ollama daemon, or backend unauthenticated. For a shared/production service use the existing [Helm chart](pages/admin/deployment/helm.md) and protected Kubernetes workloads rather than the single-host quickstart.
 
