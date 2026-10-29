@@ -27,9 +27,7 @@ export function isAllowedOllamaPassthroughRequest(
   // an upstream may interpret encoded slashes or dot segments differently.
   const requestPath = requestUrl.split("?")[0];
   if (!requestPath.startsWith(`${apiPrefix}/`)) return false;
-  const suffix = requestPath
-    .slice(apiPrefix.length)
-    .replace(AGENT_UUID, "");
+  const suffix = requestPath.slice(apiPrefix.length).replace(AGENT_UUID, "");
 
   // All permitted paths are literal ASCII, with no encoded path characters.
   // This also rejects attempts to smuggle management paths via normalization.
