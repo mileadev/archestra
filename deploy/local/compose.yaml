@@ -4,7 +4,7 @@ name: archestra-local
 
 services:
   archestra:
-    image: ${ARCHESTRA_IMAGE:-archestra/platform:1.4.10}
+    image: ${ARCHESTRA_IMAGE:-archestra/platform:1.4.9}
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
