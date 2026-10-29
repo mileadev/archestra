@@ -11,7 +11,7 @@ cp deploy/local/.env.example deploy/local/.env
 docker compose --env-file deploy/local/.env -f deploy/local/compose.yaml up -d
 ```
 
-The example defaults to upstream stable `archestra/platform:1.4.10`, **without this fork's code changes**. To deploy the modified fork, first run:
+The example defaults to upstream stable `archestra/platform:1.4.9`, **without this fork's code changes**. To deploy the modified fork, first run:
 
 ```bash
 docker build --target unified -t archestra-fork:local -f platform/Dockerfile platform
