@@ -52,6 +52,7 @@ jobs:
           backend/src/routes/chat/model-fetchers/ollama.ts
           backend/src/routes/chat/model-fetchers/ollama.test.ts
           backend/src/routes/proxy/routes/ollama.ts
+          backend/src/routes/proxy/routes/ollama.test.ts
           backend/src/routes/proxy/routes/ollama-native.ts
           backend/src/routes/proxy/routes/ollama-passthrough-policy.ts
           backend/src/routes/proxy/routes/ollama-passthrough-policy.unit.test.ts
@@ -63,3 +64,7 @@ jobs:
         run: >
           pnpm --dir backend exec vitest run --project clean
           src/routes/chat/model-fetchers/ollama.test.ts
+      - name: Run Ollama catch-all integration tests
+        run: >
+          pnpm --dir backend exec vitest run --project clean
+          src/routes/proxy/routes/ollama.test.ts
