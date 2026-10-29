@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/local-provider-mcp-regression.yml"
       - "platform/scripts/mcp-smoke*.mjs"
+      - "platform/scripts/source-audit*.mjs"
       - "platform/backend/src/routes/chat/model-fetchers/ollama*.ts"
       - "platform/backend/src/routes/proxy/routes/ollama*.ts"
       - "deploy/local/**"
@@ -68,3 +69,41 @@ jobs:
         run: >
           pnpm --dir backend exec vitest run --project clean
           src/routes/proxy/routes/ollama.test.ts
+
+  audit-source:
+    name: Tracked-source security triage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.22.1"
+      - name: Validate source inventory and redaction behavior
+        run: node --test platform/scripts/source-audit.test.mjs
+      - name: Inventory all tracked files and flag review candidates
+        run: node platform/scripts/source-audit.mjs
+      - name: Upload redacted code-review candidate inventory
+        uses: ./.github/actions/github-upload-artifact
+        with:
+          name: archestra-source-audit
+          path: .artifacts/source-audit.json
+          retention-days: "14"
+          if-no-files-found: error
+
+  compose:
+    name: Local Docker Compose validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate local deployment manifest
+        shell: bash
+        run: |
+          cp deploy/local/.env.example deploy/local/.env
+          docker compose --env-file deploy/local/.env -f deploy/local/compose.yaml config --quiet
+          docker compose --env-file deploy/local/.env -f deploy/local/compose.yaml config --images
