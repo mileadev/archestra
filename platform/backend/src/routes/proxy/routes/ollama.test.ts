@@ -270,5 +270,4 @@ describe("Ollama passthrough", () => {
       await app.close();
     }
   });
-
 });
