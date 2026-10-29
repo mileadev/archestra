@@ -9,7 +9,7 @@ import { RouteId } from "@archestra/shared";
 import fastifyHttpProxy from "@fastify/http-proxy";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import config from "@/config";
+import config, { stripOllamaV1Suffix } from "@/config";
 import logger from "@/logging";
 import { constructResponseSchema, Ollama, OpenAi, UuidIdSchema } from "@/types";
 import {
@@ -78,7 +78,9 @@ const ollamaProxyRoutes: FastifyPluginAsyncZod = async (fastify) => {
   // Routes are always registered for OpenAPI schema generation
   if (config.llm.ollama.enabled) {
     await fastify.register(fastifyHttpProxy, {
-      upstream: config.llm.ollama.baseUrl as string,
+      // The configured URL includes /v1 for SDK clients; the proxy rewrites
+      // public paths to /v1/* itself, so forward from the server root.
+      upstream: stripOllamaV1Suffix(config.llm.ollama.baseUrl as string),
       prefix: API_PREFIX,
       rewritePrefix: "",
       preHandler: async (request, reply) => {
