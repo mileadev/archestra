@@ -18,6 +18,7 @@ import {
 } from "../adapters";
 import { PROXY_API_PREFIX, PROXY_BODY_LIMIT } from "../common";
 import { createPassthroughAuthenticator } from "../llm-proxy-auth";
+import { isAllowedOllamaPassthroughRequest } from "./ollama-passthrough-policy";
 import { handleLLMProxy } from "../llm-proxy-handler";
 import {
   cleanForwardedBody,
@@ -81,6 +82,20 @@ const ollamaProxyRoutes: FastifyPluginAsyncZod = async (fastify) => {
       prefix: API_PREFIX,
       rewritePrefix: "",
       preHandler: async (request, reply) => {
+        if (
+          !isAllowedOllamaPassthroughRequest(
+            request.method,
+            request.url,
+            API_PREFIX,
+          )
+        ) {
+          return reply.code(403).send({
+            error: {
+              type: "forbidden",
+              message: "Ollama passthrough permits read-only model discovery only. Use dedicated inference routes.",
+            },
+          });
+        }
         // Authenticate before the rewrite: the agent UUID is read from the URL
         // that the rewrite is about to strip.
         await createPassthroughAuthenticator("ollama")({
