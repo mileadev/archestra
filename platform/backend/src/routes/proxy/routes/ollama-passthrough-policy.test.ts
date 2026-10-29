@@ -12,9 +12,6 @@ describe("Ollama catch-all admission", () => {
       ["GET", "/api/ps"],
       ["GET", "/api/version"],
       ["POST", "/api/show"],
-      ["POST", "/api/chat"],
-      ["POST", "/chat/completions"],
-      ["POST", "/embeddings"],
     ])(`${prefix} permits %s %s`, (method, path) => {
       expect(allowed(method, `${prefix}${path}`, prefix)).toBe(true);
       expect(allowed(method, `${prefix}/${AGENT}${path}?a=1`, prefix)).toBe(true);
@@ -26,6 +23,9 @@ describe("Ollama catch-all admission", () => {
       ["POST", "/api/create"],
       ["POST", "/api/push"],
       ["POST", "/api/copy"],
+      ["POST", "/api/chat"],
+      ["POST", "/chat/completions"],
+      ["POST", "/embeddings"],
       ["POST", "/api/generate"],
       ["POST", "/api/embed"],
       ["PUT", "/api/blobs/sha256:abc"],
