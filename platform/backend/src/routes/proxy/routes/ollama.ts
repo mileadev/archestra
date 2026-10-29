@@ -18,8 +18,8 @@ import {
 } from "../adapters";
 import { PROXY_API_PREFIX, PROXY_BODY_LIMIT } from "../common";
 import { createPassthroughAuthenticator } from "../llm-proxy-auth";
-import { isAllowedOllamaPassthroughRequest } from "./ollama-passthrough-policy";
 import { handleLLMProxy } from "../llm-proxy-handler";
+import { isAllowedOllamaPassthroughRequest } from "./ollama-passthrough-policy";
 import {
   cleanForwardedBody,
   stripArchestraRequestHeaders,
@@ -94,7 +94,8 @@ const ollamaProxyRoutes: FastifyPluginAsyncZod = async (fastify) => {
           return reply.code(403).send({
             error: {
               type: "forbidden",
-              message: "Ollama passthrough permits read-only model discovery only. Use dedicated inference routes.",
+              message:
+                "Ollama passthrough permits read-only model discovery only. Use dedicated inference routes.",
             },
           });
         }
