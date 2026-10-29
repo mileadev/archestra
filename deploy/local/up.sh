@@ -21,13 +21,12 @@ if [ -z "$existing" ]; then
     exit 1
   fi
   password=$(openssl rand -hex 24)
-  if grep -q '^ARCHESTRA_AUTH_ADMIN_PASSWORD=' "$env_file"; then
-    # A blank key can occur after manual editing; keep the last assignment
-    # authoritative and avoid rewriting unrelated provider configuration.
-    printf '\nARCHESTRA_AUTH_ADMIN_PASSWORD=%s\n' "$password" >> "$env_file"
-  else
-    printf '\nARCHESTRA_AUTH_ADMIN_PASSWORD=%s\n' "$password" >> "$env_file"
-  fi
+  tmp_file=$(mktemp "$here/.env.tmp.XXXXXX")
+  # Keep exactly one key assignment, without evaluating .env as shell code.
+  grep -v '^ARCHESTRA_AUTH_ADMIN_PASSWORD=' "$env_file" > "$tmp_file" || true
+  printf '\nARCHESTRA_AUTH_ADMIN_PASSWORD=%s\n' "$password" >> "$tmp_file"
+  chmod 600 "$tmp_file"
+  mv "$tmp_file" "$env_file"
 elif [ "${#existing}" -lt 16 ]; then
   echo "ERROR: ARCHESTRA_AUTH_ADMIN_PASSWORD must have at least 16 characters." >&2
   exit 1
