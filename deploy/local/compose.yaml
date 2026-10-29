@@ -11,6 +11,7 @@ services:
       - "127.0.0.1:9000:9000"
     environment:
       ARCHESTRA_QUICKSTART: "true"
+      ARCHESTRA_AUTH_ADMIN_PASSWORD: ${ARCHESTRA_AUTH_ADMIN_PASSWORD:?Run deploy/local/up.sh to generate a unique admin password}
       ARCHESTRA_OLLAMA_BASE_URL: ${ARCHESTRA_OLLAMA_BASE_URL:-http://host.docker.internal:11434/v1}
       ARCHESTRA_OLLAMA_NATIVE_BASE_URL: ${ARCHESTRA_OLLAMA_NATIVE_BASE_URL:-http://host.docker.internal:11434}
       ARCHESTRA_BEDROCK_IAM_AUTH_ENABLED: ${ARCHESTRA_BEDROCK_IAM_AUTH_ENABLED:-false}
