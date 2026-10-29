@@ -1,54 +1,53 @@
 # Archestra
 
-Self-hostable AI platform with an LLM gateway, MCP gateway, agent runtime, security controls, and observability. This repository is a fork of [archestra-ai/archestra](https://github.com/archestra-ai/archestra).
+Self-hostable AI platform with an LLM gateway, an MCP gateway, agent runtime, tool policy, authentication, and observability. Fork of [archestra-ai/archestra](https://github.com/archestra-ai/archestra).
 
-## Quickstart
+## Local deployment
 
-Prerequisites: Docker Engine, sufficient disk space, and network access for initial image pulls.
+Docker quickstart (**single trusted development host only**):
 
 ```bash
-docker run --name archestra --restart unless-stopped \
-  -p 127.0.0.1:9000:9000 -p 127.0.0.1:3000:3000 \
-  -e ARCHESTRA_QUICKSTART=true \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v archestra-postgres-data:/var/lib/postgresql/data \
-  -v archestra-app-data:/app/data \
-  archestra/platform:<pin-a-tested-release>
+cp deploy/local/.env.example deploy/local/.env
+docker compose --env-file deploy/local/.env -f deploy/local/compose.yaml up -d
+curl --fail http://127.0.0.1:9000/health
 ```
 
-Replace `<pin-a-tested-release>` with a verified release tag. The upstream `latest` tag can point to a release candidate. Open http://localhost:3000 after startup. The Docker socket grants the container extensive host control: use the quickstart only on a trusted, dedicated development host. Do not publish these ports to a public network.
+Open <http://127.0.0.1:3000>. The example runs the upstream stable image `archestra/platform:1.4.10` (released 2026-10-29); it does **not** contain this fork's changes. To run the patched checkout, build the repository's existing Dockerfile:
 
-## Providers and MCP
+```bash
+docker build --target unified -t archestra-fork:local -f platform/Dockerfile platform
+# Set ARCHESTRA_IMAGE=archestra-fork:local in deploy/local/.env
+docker compose --env-file deploy/local/.env -f deploy/local/compose.yaml up -d
+```
 
-- **Local Ollama:** Native `/api/chat` or OpenAI-compatible `/v1`, with model discovery and tool calling.
-- **Ollama Cloud:** Configure separately as a credentialed Ollama provider; availability and request compatibility depend on its published API. Do not reuse the local provider's unauthenticated settings.
-- **Amazon Bedrock:** API key, SigV4, or scoped workload IAM identity; specify the region and permitted models.
-- **MCP:** Expose authorized gateways over Streamable HTTP, with OAuth or scoped tokens. Connect clients from the platform's **Connect** page.
+**Security:** This quickstart mounts the Docker socket and can control the host. Keep exposed ports on loopback. Use the Kubernetes deployment, dedicated nodes, ingress TLS, network policies, and scoped workload identities for shared or production installations.
 
-See [Local provider and MCP deployment](docs/LOCAL-DEPLOYMENT.md) for setup, tests, and security limitations.
+## Providers
 
-## Development
+- **Ollama Local:** `http://host.docker.internal:11434/v1` (OpenAI-compatible) or `http://host.docker.internal:11434` (native); one provider key per reachable model node.
+- **Ollama Cloud:** `https://ollama.com/v1` (OpenAI-compatible) or `https://ollama.com` (native). Requires a separate Ollama API key. Cloud inference may incur charges.
+- **Amazon Bedrock:** configured provider credentials, temporary AWS IAM role or SigV4, region-specific model access and IAM resource scoping.
+- **MCP:** authenticated per-user or shared gateway at `/v1/mcp/<gateway-slug>`, compatible with clients supporting Streamable HTTP; OAuth and bearer-token flows depend on the client.
+
+See [local setup and validation](docs/LOCAL-DEPLOYMENT.md) and [harness compatibility](docs/MCP-HARNESS-COMPATIBILITY.md).
+
+## Development and checks
+
+Prerequisites and environment: [Developer Quickstart](docs/pages/contributing/developer-quickstart.md).
 
 ```bash
 cd platform
 corepack enable
 pnpm install --frozen-lockfile
-pnpm preflight
 pnpm lint
 pnpm type-check
 pnpm test
 ```
 
-For source development and advanced testing, follow [Developer Quickstart](docs/pages/contributing/developer-quickstart.md). Source builds require the additional Rust, container, and infrastructure dependencies described there.
+Run read-only MCP wire and auth checks with `node platform/scripts/mcp-smoke.mjs` after setting `ARCHESTRA_MCP_URL` and `ARCHESTRA_MCP_TOKEN`.
 
-## Documentation
+## Documentation and license
 
-- [Deployment](docs/pages/admin/deployment/index.md)
-- [Ollama](docs/pages/llm-proxy/providers/ollama.md)
-- [Bedrock](docs/pages/llm-proxy/providers/bedrock.md)
-- [MCP gateway](docs/pages/mcp/gateway.md)
-- [Security and audit plan](docs/SECURITY-AUDIT-PLAN.md)
+[Deployment](docs/pages/admin/deployment/index.md) · [Ollama](docs/pages/llm-proxy/providers/ollama.md) · [Bedrock](docs/pages/llm-proxy/providers/bedrock.md) · [MCP gateway](docs/pages/mcp/gateway.md) · [Audit and optimization plan](docs/SECURITY-AUDIT-PLAN.md)
 
-## License
-
-See [LICENSE.md](LICENSE.md), [LICENSE_AGPL](LICENSE_AGPL), and [LICENSE_ENTERPRISE](LICENSE_ENTERPRISE). Some components are enterprise-licensed; verify scope before distribution or modification.
+Dual AGPL/Enterprise licensing: [LICENSE.md](LICENSE.md), [LICENSE_AGPL](LICENSE_AGPL), [LICENSE_ENTERPRISE](LICENSE_ENTERPRISE). Retain upstream copyright and licensed components.
