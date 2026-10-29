@@ -27,6 +27,14 @@
 9. **P2: Documentation.** Compact root README, one local quickstart, per-provider deployment instructions, machine-checkable compatibility matrix, licenses and upstream attribution.
 10. **P2: Performance.** Profile hot paths, N+1 queries, token accounting, model discovery fanout, connection pool pressure, cache invalidation, UI bundles, and p50/p95/p99 under realistic concurrent workloads.
 
+## Implemented audit instrumentation
+
+- `platform/scripts/source-audit.mjs` enumerates **every tracked file**, hashes file content into a reproducible aggregate manifest, counts source versus binary files and records only file/line/rule for heuristic code-risk candidates. It does not emit matched source text or secrets, execute tracked source, or follow symlinks outside the checkout.
+- `platform/scripts/source-audit.test.mjs` covers source-location redaction, tracked symlinks, exhaustive inventory on a controlled fixture, and non-disclosure of the matched string.
+- `.github/workflows/local-provider-mcp-regression.yml` runs this audit and uploads a 14-day read-only JSON artifact for manual triage. No regex hit is automatically a vulnerability finding. Expert source/sink tracing and exploitability verification remain necessary.
+- The same workflow runs authenticated MCP legacy/modern protocol negative tests, Ollama discovery and proxy regression checks, and validates the local Compose manifest without starting privileged containers.
+- The fork's dependency gate uses `pnpm audit --audit-level high` in place of GitHub's unsupported Dependency Review API; upstream retains the native dependency-review action.
+
 ## Audit workflow and gates
 
 - Generate complete file inventory and risk-weighted code ownership map; do not treat sampled files as exhaustive coverage.
@@ -41,5 +49,11 @@
 - Add explicit Ollama passthrough endpoint policy and regression tests.
 - Apply policy to OpenAI-compatible and native Ollama catch-all proxy handlers.
 - Replace root README and add deployment guide.
+- Add local Docker Compose configuration and source-build path for this fork.
+- Add a read-only full tracked-file inventory and redacted risk-candidate report generator.
+- Add direct Ollama Cloud API key requirement and redirect denial during model discovery.
+- Fix OpenAI-compatible Ollama catch-all upstream root to avoid duplicate /v1 prefixes.
+- Add test-only MCP protocol/auth smoke and per-client capability matrix.
+- Add focused GitHub CI regression and fork-compatible dependency audit.
 
-**Not completed:** exhaustive source coverage, dependency/build execution, local Docker end-to-end, actual Ollama Cloud or Bedrock calls, and all client interoperability certification. These require a networked runner, installed dependencies, provider accounts, and test credentials.
+**Remaining limitations:** The automated inventory covers every Git-tracked file for the listed regex patterns, **not** complete semantic source auditing. The full manual audit, independent exploit validation, production Docker bring-up/restore, actual Ollama Cloud or Bedrock API calls, and every-client interoperability certification still require code review and runtime access to real endpoints and credentials. Source coverage must not be conflated with security assurance. CI evidence is recorded by its own GitHub Actions jobs.
