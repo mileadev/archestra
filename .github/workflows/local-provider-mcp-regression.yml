@@ -1,0 +1,65 @@
+name: Local Provider and MCP Regression
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/local-provider-mcp-regression.yml"
+      - "platform/scripts/mcp-smoke*.mjs"
+      - "platform/backend/src/routes/chat/model-fetchers/ollama*.ts"
+      - "platform/backend/src/routes/proxy/routes/ollama*.ts"
+      - "deploy/local/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "local-provider-mcp-regression-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  mcp-protocol:
+    name: MCP protocol and security smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.22.1"
+      - name: Run no-dependency MCP protocol and denial tests
+        run: node --test platform/scripts/mcp-smoke.test.mjs
+
+  ollama:
+    name: Ollama provider and proxy regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ./platform
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-env
+        with:
+          working-directory: platform
+      - name: Lint only changed backend sources
+        run: >
+          pnpm exec biome check
+          backend/src/routes/chat/model-fetchers/ollama.ts
+          backend/src/routes/chat/model-fetchers/ollama.test.ts
+          backend/src/routes/proxy/routes/ollama.ts
+          backend/src/routes/proxy/routes/ollama-native.ts
+          backend/src/routes/proxy/routes/ollama-passthrough-policy.ts
+          backend/src/routes/proxy/routes/ollama-passthrough-policy.unit.test.ts
+      - name: Run DB-free policy regression
+        run: >
+          pnpm --dir backend exec vitest run --project unit
+          src/routes/proxy/routes/ollama-passthrough-policy.unit.test.ts
+      - name: Run model discovery tests
+        run: >
+          pnpm --dir backend exec vitest run --project clean
+          src/routes/chat/model-fetchers/ollama.test.ts
