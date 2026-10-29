@@ -223,7 +223,12 @@ describe("Ollama passthrough", () => {
     await app.register(ollamaProxyRoutes);
 
     try {
-      for (const url of ["/api/chat", "/api/pull", "/api/create", "/api/delete"]) {
+      for (const url of [
+        "/api/chat",
+        "/api/pull",
+        "/api/create",
+        "/api/delete",
+      ]) {
         const response = await app.inject({
           method: "POST",
           url: `${API_PREFIX}${url}`,
@@ -231,7 +236,10 @@ describe("Ollama passthrough", () => {
             "content-type": "application/json",
             "x-archestra-virtual-key": passthroughToken,
           },
-          payload: { model: "llama3.2", messages: [{ role: "user", content: "hi" }] },
+          payload: {
+            model: "llama3.2",
+            messages: [{ role: "user", content: "hi" }],
+          },
         });
         expect(response.statusCode).toBe(403);
       }
