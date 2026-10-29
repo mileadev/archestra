@@ -9,7 +9,7 @@ import { RouteId } from "@archestra/shared";
 import fastifyHttpProxy from "@fastify/http-proxy";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import config from "@/config";
+import config, { stripOllamaV1Suffix } from "@/config";
 import logger from "@/logging";
 import { constructResponseSchema, Ollama, OpenAi, UuidIdSchema } from "@/types";
 import {
@@ -19,6 +19,7 @@ import {
 import { PROXY_API_PREFIX, PROXY_BODY_LIMIT } from "../common";
 import { createPassthroughAuthenticator } from "../llm-proxy-auth";
 import { handleLLMProxy } from "../llm-proxy-handler";
+import { isAllowedOllamaPassthroughRequest } from "./ollama-passthrough-policy";
 import {
   cleanForwardedBody,
   stripArchestraRequestHeaders,
@@ -77,10 +78,27 @@ const ollamaProxyRoutes: FastifyPluginAsyncZod = async (fastify) => {
   // Routes are always registered for OpenAPI schema generation
   if (config.llm.ollama.enabled) {
     await fastify.register(fastifyHttpProxy, {
-      upstream: config.llm.ollama.baseUrl as string,
+      // The configured URL includes /v1 for SDK clients; the proxy rewrites
+      // public paths to /v1/* itself, so forward from the server root.
+      upstream: stripOllamaV1Suffix(config.llm.ollama.baseUrl as string),
       prefix: API_PREFIX,
       rewritePrefix: "",
       preHandler: async (request, reply) => {
+        if (
+          !isAllowedOllamaPassthroughRequest(
+            request.method,
+            request.url,
+            API_PREFIX,
+          )
+        ) {
+          return reply.code(403).send({
+            error: {
+              type: "forbidden",
+              message:
+                "Ollama passthrough permits read-only model discovery only. Use dedicated inference routes.",
+            },
+          });
+        }
         // Authenticate before the rewrite: the agent UUID is read from the URL
         // that the rewrite is about to strip.
         await createPassthroughAuthenticator("ollama")({

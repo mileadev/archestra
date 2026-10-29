@@ -1,137 +1,52 @@
-<div align="center">
+# Archestra
 
-<img src="logo.svg" alt="Archestra" width="520" />
+Self-hostable AI platform with an LLM gateway, an MCP gateway, agent runtime, tool policy, authentication, and observability. Fork of [archestra-ai/archestra](https://github.com/archestra-ai/archestra).
 
-**Secure AI Platform**
+## Local deployment
 
-*Built on a strong security and observability foundation: SSO and RBAC,
-sandboxed code execution, Lethal-Trifecta guardrails,
-OpenTelemetry traces, and Prometheus metrics — first-class, not bolted on.*
-
-[![License](https://img.shields.io/badge/License-AGPL%203.0%20%2F%20Enterprise-blue.svg)](LICENSE.md)
-[![Release](https://img.shields.io/github/v/release/archestra-ai/archestra)](https://github.com/archestra-ai/archestra/releases)
-[![Contributors](https://img.shields.io/github/contributors/archestra-ai/archestra)](https://github.com/archestra-ai/archestra/graphs/contributors)
-[![Last commit](https://img.shields.io/github/last-commit/archestra-ai/archestra)](https://github.com/archestra-ai/archestra/commits/main)
-[![Commit activity](https://img.shields.io/github/commit-activity/m/archestra-ai/archestra)](https://github.com/archestra-ai/archestra/pulse)
-
-[Quickstart](https://archestra.ai/docs/get-started#run-archestra) &nbsp;·&nbsp;
-[Docs](https://archestra.ai/docs/get-started) &nbsp;·&nbsp;
-[Releases](https://github.com/archestra-ai/archestra/releases) &nbsp;·&nbsp;
-[Slack](https://archestra.ai/join-slack)
-
-<br />
-
-https://github.com/user-attachments/assets/912b85e2-ef14-4e83-a807-5e2a81457a88
-
-</div>
-
----
-
-## What it does
-
-Point your users — or your agents, or Claude / Codex / Cursor — at one URL. Archestra handles the rest:
-
-- 💬 **Chat for non-technical users.** Internal AI assistant with
-  [projects](https://archestra.ai/docs/chat/projects),
-  [MCP apps](https://archestra.ai/docs/chat/apps), and
-  [Slack](https://archestra.ai/docs/agents/triggers-and-channels/slack),
-  [MS Teams](https://archestra.ai/docs/agents/triggers-and-channels/ms-teams), and
-  [email](https://archestra.ai/docs/agents/triggers-and-channels/email)
-  front-ends.
-- 🛠️ **Developer LLM & MCP portal.** One token for Claude Code, Codex,
-  Cursor — see the [proxy](https://archestra.ai/docs/llm-proxy).
-- 🚪 **LLM gateway** for [any provider](https://archestra.ai/docs/llm-proxy/providers)
-  (Anthropic, OpenAI, Azure, Bedrock, DeepSeek, …) with
-  [cost limits](https://archestra.ai/docs/llm-proxy/costs-and-limits),
-  [virtual API keys](https://archestra.ai/docs/llm-proxy/authentication),
-  and [dynamic model routing](https://archestra.ai/docs/reference/clients/model-router-client-credentials).
-- 🔌 **MCP gateway** with [OAuth + On-Behalf-Of](https://archestra.ai/docs/mcp/authentication)
-  so tools run as the user, not a shared service account.
-- 🤝 **A2A gateway** for [agent-to-agent triggers](https://archestra.ai/docs/agents/triggers-and-channels/webhook-a2a).
-- 📦 **Private MCP registry** so teams ship their own tools — see
-  [registry docs](https://archestra.ai/docs/mcp/servers).
-- 🎼 **MCP orchestrator** with a
-  [Kubernetes operator](https://archestra.ai/docs/mcp/servers#mcp-orchestrator) and
-  [self-serve promotion](https://archestra.ai/docs/administration/environments).
-- 🤖 **Agent runtime** with [scheduled / email / webhook triggers](https://archestra.ai/docs/agents),
-  [sub-agent delegation](https://archestra.ai/docs/agents),
-  [reusable skills](https://archestra.ai/docs/agents/skills/sharing),
-  sandboxed code execution, and a K8s-native filesystem.
-- 📚 **RAG knowledge base** plumbed via
-  [connectors](https://archestra.ai/docs/knowledge/connectors) to
-  your existing stack.
-- 🧩 **Mini app builder** — see [apps](https://archestra.ai/docs/chat/apps).
-- 🛡️ **Deterministic guardrails** for [tool calls](https://archestra.ai/docs/agents/guardrails) and
-  [Lethal Trifecta](https://archestra.ai/docs/agents/guardrails#the-lethal-trifecta) protections.
-- 🪪 **Identity & access** with [SSO](https://archestra.ai/docs/administration/identity/sso)
-  (OIDC, SAML, Okta, Entra), [RBAC with role mapping & team sync](https://archestra.ai/docs/administration/access-control),
-  and [secrets management](https://archestra.ai/docs/administration/security/secrets-management).
-- 🌎 **Environments** with [per-env egress policies](https://archestra.ai/docs/administration/environments)
-  and [per-env cost limits](https://archestra.ai/docs/llm-proxy/costs-and-limits).
-- 🔭 **Observability** out of the box: OpenTelemetry traces, Prometheus
-  metrics, logs, [per-team cost tracking](https://archestra.ai/docs/llm-proxy/costs-and-limits).
-
-> Already running dangerous single-tenant agents like Claude Cowork,
-> OpenClaw, or Hermes in your enterprise? **[Migration Kit →](migration-kit/README.md)**
-
-## Quickstart
+Docker quickstart (**single trusted development host only**):
 
 ```bash
-docker pull archestra/platform:latest
-
-docker run \
-  -p 127.0.0.1:9000:9000 -p 127.0.0.1:3000:3000 \
-  -e ARCHESTRA_QUICKSTART=true \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v archestra-postgres-data:/var/lib/postgresql/data \
-  -v archestra-app-data:/app/data \
-  archestra/platform:latest
+bash deploy/local/up.sh
+curl --fail http://127.0.0.1:9000/health
 ```
 
-Open <http://localhost:3000>. Full Docker / Helm / Kubernetes instructions
-live in the [quickstart docs](https://archestra.ai/docs/get-started#run-archestra).
+Open <http://127.0.0.1:3000> with `admin@example.com` and the generated password in `deploy/local/.env` (mode 0600). Change the password after initial sign-in. The example runs the upstream stable image `archestra/platform:1.4.9` (Docker Hub confirmed 2026-10-29); it does **not** contain this fork's changes. To run the patched checkout, build the repository's existing Dockerfile:
 
-### Release channels
+```bash
+docker build --target unified -t archestra-fork:local -f platform/Dockerfile platform
+# Set ARCHESTRA_IMAGE=archestra-fork:local in deploy/local/.env
+bash deploy/local/up.sh
+```
 
-Archestra maintains two active release tracks:
-- **Stable releases** (e.g. `1.3.51`): Qualified, tested releases for production deployments. Archestra maintains one active stable release line at a time with security patches and bug fixes.
-- **Release candidates** (e.g. `1.4.0-rc.22`): Previews of upcoming features built directly from the `main` branch. They let you test new capabilities and provide feedback before they land in a stable release. The Docker tag `archestra/platform:latest` points to the newest release, so it usually runs a release candidate.
+**Security:** This quickstart mounts the Docker socket and can control the host. Keep exposed ports on loopback. Use the Kubernetes deployment, dedicated nodes, ingress TLS, network policies, and scoped workload identities for shared or production installations.
 
-New features and bug fixes land on `main` first and ship in rolling beta releases. Fixes are then selectively backported to the supported stable branch. For production environments, pin an exact version tag or Helm chart version rather than tracking `latest`. See our [Release guide](platform/dev/RELEASE.md) for full release lifecycle details.
+## Providers
 
-## Ready for production
+- **Ollama Local:** `http://host.docker.internal:11434/v1` (OpenAI-compatible) or `http://host.docker.internal:11434` (native); one provider key per reachable model node.
+- **Ollama Cloud:** `https://ollama.com/v1` (OpenAI-compatible) or `https://ollama.com` (native). Requires a separate Ollama API key. Cloud inference may incur charges.
+- **Amazon Bedrock:** configured provider credentials, temporary AWS IAM role or SigV4, region-specific model access and IAM resource scoping.
+- **MCP:** authenticated per-user or shared gateway at `/v1/mcp/<gateway-slug>`, compatible with clients supporting Streamable HTTP; OAuth and bearer-token flows depend on the client.
 
-- ✅ $13.5M total funding
-- ✅ Three Fortune-50 deployments
-- ✅ 31 ms at p95 — [performance benchmarks →](https://archestra.ai/docs/administration/observability/performance-benchmarks)
-- ✅ [Terraform provider →](https://github.com/archestra-ai/terraform-provider-archestra)
-- ✅ [Helm chart →](https://archestra.ai/docs/administration/deployment#helm-deployment-recommended-for-production)
+See [local setup and validation](docs/LOCAL-DEPLOYMENT.md) and [harness compatibility](docs/MCP-HARNESS-COMPATIBILITY.md).
 
-## Deeper docs
+## Development and checks
 
-- 📖 [**Platform overview**](https://archestra.ai/docs/get-started) —
-  what's in the box, how the pieces fit together.
-- 📐 [**Deployment**](https://archestra.ai/docs/administration/deployment) —
-  Docker, Helm, Kubernetes, every env var, secrets management.
-- 💰 [**Pricing model**](https://archestra.ai/docs/get-started/pricing) —
-  Open Core, free for teams under 30 users, enterprise licensing.
-- 🛡️ [**Security & bug bounty**](https://archestra.ai/docs/contributing/security)
-- 🤝 [**Contributing**](https://archestra.ai/docs/contributing) —
-  set up the dev env, run e2e tests, open a PR.
-- [**Release guide**](platform/dev/RELEASE.md) —
-  beta releases, stable patches, cutovers, and qualification.
+Prerequisites and environment: [Developer Quickstart](docs/pages/contributing/developer-quickstart.md).
 
-Thank you for continuously making **Archestra** better — you're awesome 🫶
+```bash
+cd platform
+corepack enable
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm type-check
+pnpm test
+```
 
-<a href="https://github.com/archestra-ai/archestra/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=archestra-ai/archestra" alt="Contributors" />
-</a>
+Run read-only MCP wire and auth checks with `node platform/scripts/mcp-smoke.mjs` after setting `ARCHESTRA_MCP_URL` and `ARCHESTRA_MCP_TOKEN`.
 
----
+## Documentation and license
 
-<div align="center">
-  <br />
-  <a href="https://www.archestra.ai/blog/archestra-joins-cncf-linux-foundation"><img src="docs/assets/linux-foundation-logo.webp" height="50" alt="Linux Foundation" /></a>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://www.archestra.ai/blog/archestra-joins-cncf-linux-foundation"><img src="docs/assets/cncf-logo.webp" height="50" alt="CNCF" /></a>
-</div>
+[Deployment](docs/pages/admin/deployment/index.md) · [Ollama](docs/pages/llm-proxy/providers/ollama.md) · [Bedrock](docs/pages/llm-proxy/providers/bedrock.md) · [MCP gateway](docs/pages/mcp/gateway.md) · [Audit and optimization plan](docs/SECURITY-AUDIT-PLAN.md)
+
+Dual AGPL/Enterprise licensing: [LICENSE.md](LICENSE.md), [LICENSE_AGPL](LICENSE_AGPL), [LICENSE_ENTERPRISE](LICENSE_ENTERPRISE). Retain upstream copyright and licensed components.

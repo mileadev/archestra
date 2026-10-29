@@ -1,0 +1,39 @@
+# Local single-host evaluation only. The Docker socket gives the container
+# Docker-host control; use a dedicated trusted machine, not a shared server.
+name: archestra-local
+
+services:
+  archestra:
+    image: ${ARCHESTRA_IMAGE:-archestra/platform:1.4.9}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:9000:9000"
+    environment:
+      ARCHESTRA_QUICKSTART: "true"
+      ARCHESTRA_AUTH_ADMIN_PASSWORD: ${ARCHESTRA_AUTH_ADMIN_PASSWORD:?Run deploy/local/up.sh to generate a unique admin password}
+      ARCHESTRA_OLLAMA_BASE_URL: ${ARCHESTRA_OLLAMA_BASE_URL:-http://host.docker.internal:11434/v1}
+      ARCHESTRA_OLLAMA_NATIVE_BASE_URL: ${ARCHESTRA_OLLAMA_NATIVE_BASE_URL:-http://host.docker.internal:11434}
+      ARCHESTRA_BEDROCK_IAM_AUTH_ENABLED: ${ARCHESTRA_BEDROCK_IAM_AUTH_ENABLED:-false}
+      ARCHESTRA_BEDROCK_REGION: ${ARCHESTRA_BEDROCK_REGION:-us-east-1}
+      ARCHESTRA_BEDROCK_BASE_URL: ${ARCHESTRA_BEDROCK_BASE_URL:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - archestra-postgres-data:/var/lib/postgresql/data
+      - archestra-app-data:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:9000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 20s
+      timeout: 5s
+      start_period: 120s
+      retries: 6
+
+volumes:
+  archestra-postgres-data:
+  archestra-app-data:

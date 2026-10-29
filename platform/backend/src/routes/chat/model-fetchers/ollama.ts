@@ -80,6 +80,16 @@ async function fetchOllamaModelsImpl(params: {
   const { apiKey, baseUrlOverride, extraHeaders, provider, defaultBaseUrl } =
     params;
   const rawBaseUrl = baseUrlOverride || defaultBaseUrl || "";
+  // Direct Ollama Cloud requires a real bearer token. Never send the local
+  // placeholder credential to the hosted API.
+  const endpoint = new URL(rawBaseUrl);
+  if (
+    endpoint.hostname === "ollama.com" &&
+    endpoint.protocol === "https:" &&
+    !apiKey.trim()
+  ) {
+    throw new Error("Ollama Cloud requires a provider API key");
+  }
   const token = apiKey || PLACEHOLDER_API_KEY;
 
   // The base URL may or may not carry the `/v1` suffix (the `ollama-native`
@@ -93,6 +103,7 @@ async function fetchOllamaModelsImpl(params: {
     apiKey: token,
     errorLabel: "Ollama models",
     extraHeaders,
+    redirect: "error",
     schema: OllamaModelsListSchema,
   });
 
@@ -164,6 +175,7 @@ async function fetchOllamaShow(params: {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ model }),
+      redirect: "error",
       signal: AbortSignal.timeout(SHOW_TIMEOUT_MS),
     });
     if (!response.ok) {

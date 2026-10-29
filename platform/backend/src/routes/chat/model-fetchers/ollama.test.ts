@@ -63,6 +63,31 @@ describe("fetchOllamaModels", () => {
     });
   });
 
+  test("direct Ollama Cloud rejects missing credentials before making a request", async () => {
+    await expect(
+      fetchOllamaModels("", "https://ollama.com/v1"),
+    ).rejects.toThrow(/requires a provider API key/);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test("direct Ollama Cloud model discovery uses the bearer token and refuses redirects", async () => {
+    await fetchOllamaModels("cloud-test-key", "https://ollama.com/v1");
+    const [url, init] = listCall();
+    expect(url).toBe("https://ollama.com/v1/models");
+    expect(init).toMatchObject({
+      redirect: "error",
+      headers: { Authorization: "Bearer cloud-test-key" },
+    });
+    const show = fetchSpy.mock.calls.find((call: unknown[]) =>
+      String(call[0]).endsWith("/api/show"),
+    );
+    expect(show?.[0]).toBe("https://ollama.com/api/show");
+    expect(show?.[1]).toMatchObject({
+      redirect: "error",
+      headers: { Authorization: "Bearer cloud-test-key" },
+    });
+  });
+
   test("uses baseUrl override for the list call", async () => {
     await fetchOllamaModels("k", "https://custom.example.com/v1");
     const [url] = listCall();

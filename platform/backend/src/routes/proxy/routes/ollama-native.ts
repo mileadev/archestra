@@ -22,6 +22,7 @@ import { ollamaNativeAdapterFactory } from "../adapters";
 import { PROXY_API_PREFIX, PROXY_BODY_LIMIT } from "../common";
 import { createPassthroughAuthenticator } from "../llm-proxy-auth";
 import { handleLLMProxy } from "../llm-proxy-handler";
+import { isAllowedOllamaPassthroughRequest } from "./ollama-passthrough-policy";
 import { createProxyPreHandler } from "./proxy-prehandler";
 
 const ollamaNativeProxyRoutes: FastifyPluginAsyncZod = async (fastify) => {
@@ -64,6 +65,22 @@ const ollamaNativeProxyRoutes: FastifyPluginAsyncZod = async (fastify) => {
     // out of the URL that rewritePassthroughUrl is about to strip. The proxy
     // takes a single preHandler, so the two run as one chained hook.
     preHandler: (request, reply, next) => {
+      if (
+        !isAllowedOllamaPassthroughRequest(
+          request.method,
+          request.url,
+          API_PREFIX,
+        )
+      ) {
+        reply.code(403).send({
+          error: {
+            type: "forbidden",
+            message:
+              "Ollama passthrough permits read-only model discovery only. Use dedicated inference routes.",
+          },
+        });
+        return;
+      }
       authenticatePassthrough(request).then(
         () => rewritePassthroughUrl(request, reply, next),
         (error) => next(error),

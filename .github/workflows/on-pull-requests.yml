@@ -199,7 +199,11 @@ jobs:
       # No checkout: dependency-review-action reads the PR diff via the GitHub
       # API and references no local config file, so the (fetch-depth: 0) checkout
       # was ~74s of the job's ~89s for nothing.
+      # The public upstream has Dependency Graph enabled. Forks may not; the
+      # GitHub action fails before scanning there. Preserve a failing security
+      # gate using a full pnpm lockfile audit instead of silently skipping it.
       - name: Dependency review
+        if: ${{ github.repository == 'archestra-ai/archestra' }}
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
@@ -212,6 +216,22 @@ jobs:
           head-ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || '' }}
           # merge_group has no PR to comment on.
           comment-summary-in-pr: ${{ github.event_name == 'pull_request' && 'on-failure' || 'never' }}
+
+      - name: Checkout for fork dependency audit
+        if: ${{ github.repository != 'archestra-ai/archestra' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pnpm for fork dependency audit
+        if: ${{ github.repository != 'archestra-ai/archestra' }}
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 11.9.0
+          run_install: false
+      - name: Audit full pnpm lockfile (high and critical)
+        if: ${{ github.repository != 'archestra-ai/archestra' }}
+        working-directory: ./platform
+        run: pnpm audit --audit-level high
 
   # Required checks retain their names on PRs, but expensive validation runs
   # against the merge queue's combined SHA. PR-only policy checks above still
