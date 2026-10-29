@@ -117,7 +117,10 @@ jobs:
           persist-credentials: false
       - name: Validate local deployment manifest
         shell: bash
+        env:
+          ARCHESTRA_AUTH_ADMIN_PASSWORD: ci-local-only-not-a-real-secret
         run: |
+          bash -n deploy/local/up.sh
           cp deploy/local/.env.example deploy/local/.env
           docker compose --env-file deploy/local/.env -f deploy/local/compose.yaml config --quiet
           docker compose --env-file deploy/local/.env -f deploy/local/compose.yaml config --images
