@@ -7,17 +7,16 @@ Self-hostable AI platform with an LLM gateway, an MCP gateway, agent runtime, to
 Docker quickstart (**single trusted development host only**):
 
 ```bash
-cp deploy/local/.env.example deploy/local/.env
-docker compose --env-file deploy/local/.env -f deploy/local/compose.yaml up -d
+bash deploy/local/up.sh
 curl --fail http://127.0.0.1:9000/health
 ```
 
-Open <http://127.0.0.1:3000>. The example runs the upstream stable image `archestra/platform:1.4.9` (Docker Hub confirmed 2026-10-29); it does **not** contain this fork's changes. To run the patched checkout, build the repository's existing Dockerfile:
+Open <http://127.0.0.1:3000> with `admin@example.com` and the generated password in `deploy/local/.env` (mode 0600). Change the password after initial sign-in. The example runs the upstream stable image `archestra/platform:1.4.9` (Docker Hub confirmed 2026-10-29); it does **not** contain this fork's changes. To run the patched checkout, build the repository's existing Dockerfile:
 
 ```bash
 docker build --target unified -t archestra-fork:local -f platform/Dockerfile platform
 # Set ARCHESTRA_IMAGE=archestra-fork:local in deploy/local/.env
-docker compose --env-file deploy/local/.env -f deploy/local/compose.yaml up -d
+bash deploy/local/up.sh
 ```
 
 **Security:** This quickstart mounts the Docker socket and can control the host. Keep exposed ports on loopback. Use the Kubernetes deployment, dedicated nodes, ingress TLS, network policies, and scoped workload identities for shared or production installations.
