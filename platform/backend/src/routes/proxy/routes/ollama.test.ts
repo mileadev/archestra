@@ -5,7 +5,6 @@ import {
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
 import { afterEach, describe, expect } from "vitest";
-import { attestToolDescription } from "@/archestra-mcp-server/tool-attestation";
 import config from "@/config";
 import { beforeEach, test } from "@/test";
 import { makePassthroughCredential } from "@/test/llm-proxy-credentials";
@@ -202,6 +201,10 @@ describe("Ollama passthrough", () => {
       forwardedBodies.push(request.body as string);
       return { done: true };
     });
+    upstream.get("/v1/models", async () => ({
+      object: "list",
+      data: [{ id: "llama3.2" }],
+    }));
     await upstream.listen({ port: 0 });
     const address = upstream.server.address();
     const port = typeof address === "string" ? 0 : address?.port;
@@ -213,53 +216,51 @@ describe("Ollama passthrough", () => {
     await upstream.close();
   });
 
-  test("takes the gateway's markers out of a native chat request's tools", async () => {
+  test("rejects native chat and model-management bypasses", async () => {
     const app = Fastify().withTypeProvider<ZodTypeProvider>();
     app.setValidatorCompiler(validatorCompiler);
     app.setSerializerCompiler(serializerCompiler);
     await app.register(ollamaProxyRoutes);
-    const description = attestToolDescription({
-      organizationId: "org-ollama-passthrough",
-      gatewayId: "da0e7287-c7dd-46a6-a0bf-69e6412d7a9c",
-      advertisedName: "archestra__search_tools",
-      kind: "b",
-      description: "Search the catalog.",
-    });
 
     try {
-      const response = await app.inject({
-        method: "POST",
-        url: `${API_PREFIX}/api/chat`,
-        headers: {
-          "content-type": "application/json",
-          "x-archestra-virtual-key": passthroughToken,
-        },
-        payload: {
-          model: "llama3.2",
-          messages: [{ role: "user", content: "Hello!" }],
-          tools: [
-            {
-              type: "function",
-              function: { name: "gw_archestra__search_tools", description },
-            },
-          ],
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
+      for (const url of ["/api/chat", "/api/pull", "/api/create", "/api/delete"]) {
+        const response = await app.inject({
+          method: "POST",
+          url: `${API_PREFIX}${url}`,
+          headers: {
+            "content-type": "application/json",
+            "x-archestra-virtual-key": passthroughToken,
+          },
+          payload: { model: "llama3.2", messages: [{ role: "user", content: "hi" }] },
+        });
+        expect(response.statusCode).toBe(403);
+      }
     } finally {
       await app.close();
     }
-    expect(forwardedBodies).toHaveLength(1);
-    expect(forwardedBodies[0]).not.toContain("[[gwa1.");
-    expect(JSON.parse(forwardedBodies[0]).tools).toEqual([
-      {
-        type: "function",
-        function: {
-          name: "gw_archestra__search_tools",
-          description: "Search the catalog.",
-        },
-      },
-    ]);
+    expect(forwardedBodies).toHaveLength(0);
   });
+
+  test("forwards model discovery with exactly one upstream /v1", async () => {
+    // Default Ollama config and per-provider settings include /v1.
+    config.llm.ollama.baseUrl = `${config.llm.ollama.baseUrl}/v1`;
+    const app = Fastify().withTypeProvider<ZodTypeProvider>();
+    app.setValidatorCompiler(validatorCompiler);
+    app.setSerializerCompiler(serializerCompiler);
+    await app.register(ollamaProxyRoutes);
+    try {
+      const response = await app.inject({
+        method: "GET",
+        url: `${API_PREFIX}/models`,
+        headers: { "x-archestra-virtual-key": passthroughToken },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        data: [{ id: "llama3.2" }],
+      });
+    } finally {
+      await app.close();
+    }
+  });
+
 });
