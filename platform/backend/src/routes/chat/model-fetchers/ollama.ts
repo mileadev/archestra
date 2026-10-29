@@ -83,7 +83,11 @@ async function fetchOllamaModelsImpl(params: {
   // Direct Ollama Cloud requires a real bearer token. Never send the local
   // placeholder credential to the hosted API.
   const endpoint = new URL(rawBaseUrl);
-  if (endpoint.hostname === "ollama.com" && endpoint.protocol === "https:" && !apiKey.trim()) {
+  if (
+    endpoint.hostname === "ollama.com" &&
+    endpoint.protocol === "https:" &&
+    !apiKey.trim()
+  ) {
     throw new Error("Ollama Cloud requires a provider API key");
   }
   const token = apiKey || PLACEHOLDER_API_KEY;
