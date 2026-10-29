@@ -1,8 +1,8 @@
 /**
  * Explicitly bound the Ollama catch-all proxy to read-only model discovery.
  *
- * Chat completions, native chat, and embeddings are handled by their own
- * instrumented routes. Other native inference routes bypass policy/usage
+ * Chat completions, native chat, and embeddings must be handled by their own
+ * instrumented routes, never the catch-all. Native inference would bypass policy/usage
  * accounting; management routes can alter or delete local models.
  *
  * This is an LLM proxy, not an Ollama administration API.
@@ -17,13 +17,6 @@ const DISCOVERY_GET = new Set([
   "/api/version",
 ]);
 const DISCOVERY_POST = new Set(["/api/show"]);
-
-/** Dedicated handlers must remain reachable if a catch-all matches first. */
-const INSTRUMENTED_POST = new Set([
-  "/api/chat",
-  "/chat/completions",
-  "/embeddings",
-]);
 
 export function isAllowedOllamaPassthroughRequest(
   method: string,
@@ -46,6 +39,5 @@ export function isAllowedOllamaPassthroughRequest(
   const verb = method.toUpperCase();
   return verb === "GET"
     ? DISCOVERY_GET.has(suffix)
-    : verb === "POST" &&
-        (DISCOVERY_POST.has(suffix) || INSTRUMENTED_POST.has(suffix));
+    : verb === "POST" && DISCOVERY_POST.has(suffix);
 }
