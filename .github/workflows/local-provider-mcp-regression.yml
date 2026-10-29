@@ -65,6 +65,20 @@ jobs:
         run: >
           pnpm --dir backend exec vitest run --project clean
           src/routes/chat/model-fetchers/ollama.test.ts
+      - name: Restore backend native dependencies
+        id: native-cache
+        uses: ./.github/actions/cache-backend-napi
+      - name: Prepare pinned Rust toolchain if cache missed
+        if: steps.native-cache.outputs.usable != 'true'
+        uses: ./.github/actions/setup-rust-build
+        with:
+          workspaces: platform/archestra-rs
+          shared-key: local-provider-regression
+      - name: Build native backend dependencies if cache missed
+        if: steps.native-cache.outputs.usable != 'true'
+        run: pnpm exec turbo build --filter="@backend^..."
+      - name: Verify loaded native dependencies
+        run: node ../.github/scripts/verify-backend-napi.cjs
       - name: Run Ollama catch-all integration tests
         run: >
           pnpm --dir backend exec vitest run --project clean
