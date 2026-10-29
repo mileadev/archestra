@@ -14,7 +14,9 @@ describe("Ollama catch-all admission", () => {
       ["POST", "/api/show"],
     ])(`${prefix} permits %s %s`, (method, path) => {
       expect(allowed(method, `${prefix}${path}`, prefix)).toBe(true);
-      expect(allowed(method, `${prefix}/${AGENT}${path}?a=1`, prefix)).toBe(true);
+      expect(allowed(method, `${prefix}/${AGENT}${path}?a=1`, prefix)).toBe(
+        true,
+      );
     });
 
     test.each([
@@ -43,8 +45,12 @@ describe("Ollama catch-all admission", () => {
 
     test("rejects other prefixes and malformed UUIDs", () => {
       expect(allowed("GET", "/v1/other/models", prefix)).toBe(false);
-      expect(allowed("GET", `${prefix}/not-an-agent/api/tags`, prefix)).toBe(false);
-      expect(allowed("GET", `${prefix}/${AGENT}%2fapi/tags`, prefix)).toBe(false);
+      expect(allowed("GET", `${prefix}/not-an-agent/api/tags`, prefix)).toBe(
+        false,
+      );
+      expect(allowed("GET", `${prefix}/${AGENT}%2fapi/tags`, prefix)).toBe(
+        false,
+      );
     });
   }
 });
