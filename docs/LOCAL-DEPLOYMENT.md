@@ -4,9 +4,24 @@ This guide is for the `mileadev/archestra` fork. It extends Archestra's existing
 
 ## 1. Start Archestra
 
-Use the pinned-image quickstart in the repository README. Its embedded container runtime uses the Docker socket and must be treated as host-privileged. Keep ports bound to `127.0.0.1`. If remote clients need access, configure an HTTPS reverse proxy with authentication and a controlled public origin; do not expose an unauthenticated Docker API, Ollama, or backend.
+From the repository root:
 
-For source development, see `docs/pages/contributing/developer-quickstart.md`.
+```bash
+cp deploy/local/.env.example deploy/local/.env
+docker compose --env-file deploy/local/.env -f deploy/local/compose.yaml up -d
+```
+
+The example defaults to upstream stable `archestra/platform:1.4.10`, **without this fork's code changes**. To deploy the modified fork, first run:
+
+```bash
+docker build --target unified -t archestra-fork:local -f platform/Dockerfile platform
+```
+
+Set `ARCHESTRA_IMAGE=archestra-fork:local` in `deploy/local/.env`, then run the Compose command above. The build requires large native toolchain/image downloads and has not been executed in this environment.
+
+This quickstart mounts the Docker socket and must be treated as host-privileged. Keep ports on `127.0.0.1`. Do not publish the Docker API, Ollama daemon, or backend unauthenticated. For a shared/production service use the existing [Helm chart](pages/admin/deployment/helm.md) and protected Kubernetes workloads rather than the single-host quickstart.
+
+For source development use `docs/pages/contributing/developer-quickstart.md`.
 
 Verify:
 
@@ -33,13 +48,22 @@ ARCHESTRA_OLLAMA_BASE_URL=http://host.docker.internal:11434/v1
 ARCHESTRA_OLLAMA_NATIVE_BASE_URL=http://host.docker.internal:11434
 ```
 
-These values are configuration examples, not a standalone Docker Compose environment. Pass them to the application container or set the provider Base URL in the UI. Do not bind Ollama to every host interface unless separately protected by firewall and authentication.
+These defaults are already passed by `deploy/local/compose.yaml`. Add more Ollama nodes as separate providers with distinct Base URLs in **Model Providers**; use an authenticated TLS reverse proxy or a secured private network between hosts. On Linux, host-gateway resolution alone is insufficient if Ollama only listens on the host loopback socket. Firewall any host-network listener so it is inaccessible to untrusted clients.
 
 ## 3. Ollama Cloud
 
-Create a **separate** Ollama provider and configure its current official endpoint and API key in the provider settings. Check whether the selected cloud model supports the Ollama-native or OpenAI-compatible API, streaming, tool calling, embeddings, and model listing before enabling each feature.
+Direct hosted inference is supported by Ollama at the following published endpoints (2026-10-29):
 
-Do not assume local-only operations such as `/api/show`, `/api/pull`, or `/api/ps` exist in Ollama Cloud. If cloud model discovery lacks a compatible endpoint, it requires a dedicated fetcher and tests rather than masquerading as a local server. Never place a cloud credential in the README, .env.example, source, or a GitHub Action log.
+| Transport | Provider Base URL | Underlying inference API |
+| --- | --- | --- |
+| OpenAI-compatible | `https://ollama.com/v1` | `POST /v1/chat/completions` |
+| Native Ollama | `https://ollama.com` | `POST /api/chat` |
+
+Create a **separate** Ollama provider with one of these Base URLs and an Ollama **API key** in **Model Providers → Add API Key**. Do not re-use an unauthenticated local provider configuration. Archestra's Ollama model discovery now explicitly requires a nonempty key for direct cloud hosts, rejects HTTP redirects for credentialed model requests, and attempts `GET /v1/models` followed by bounded optional `POST /api/show` metadata enrichment.
+
+Use model IDs from the hosted model list (e.g. `gemma4:31b` at the time of writing), not the `:cloud` alias used by a signed-in local Ollama installation. Verify per-model tool, streaming and embeddings capabilities before assigning it to an agent; not all cloud models implement every API feature. Model-management endpoints such as pull/create/delete are intentionally blocked by Archestra's catch-all. API usage can incur charges.
+
+Official sources: [Ollama API introduction](https://github.com/ollama/ollama/blob/main/docs/api/introduction.mdx), [authentication](https://github.com/ollama/ollama/blob/main/docs/api/authentication.mdx), and [cloud models](https://github.com/ollama/ollama/blob/main/docs/cloud.mdx). Never store keys in tracked files, shell command arguments, or GitHub Actions logs.
 
 ## 4. Amazon Bedrock
 
@@ -81,7 +105,13 @@ For Claude Code, Codex, Cursor, Claude Desktop, VS Code/GitHub Copilot, Gemini C
 
 This is an *illustrative configuration schema*, not a drop-in configuration for every harness. Never save a real token in a checked-in config or command history. Clients that only support stdio need a dedicated audited stdio-to-HTTP bridge; do not pretend a remote URL works in all clients. Use the UI-generated configuration where available.
 
-Test with a compliant MCP client: initialize/discover, list tools, call an authorized read-only tool, reject an unauthorized call, verify refresh/reconnect, then verify an expired token is denied. Use per-client compatibility evidence, not an unsupported claim of universal harness support.
+First, run the read-only protocol/auth smoke test using a gateway-scoped token (set `ARCHESTRA_MCP_URL` and `ARCHESTRA_MCP_TOKEN` in the environment without logging the token):
+
+```bash
+node platform/scripts/mcp-smoke.mjs
+```
+
+The probe tests both `2025-11-25` and `2026-07-28` protocol paths, list operations, and anonymous rejection without executing tools. Then verify one **authorized read-only** tool call and one denied tool call in each actual harness. See [MCP harness compatibility](MCP-HARNESS-COMPATIBILITY.md); do not claim universal client compatibility based solely on protocol compliance.
 
 ## 6. Security and acceptance
 
@@ -93,3 +123,7 @@ Test with a compliant MCP client: initialize/discover, list tools, call an autho
 - No paid cloud call is required for local Ollama smoke tests. Bedrock and Ollama Cloud can incur usage charges.
 
 Validation matrix: local Ollama native and OpenAI-compatible chat; tool calls; stream abort; credentials rejected; Bedrock temporary IAM; cloud endpoint health; MCP tool listing/calls; unauthorized requests; cold restart; volume recovery; and concurrent clients.
+
+**Rollback:** pin and retain the previously working image tag/digest, back up both named volumes and all encryption keys before upgrades, and revert the Compose image reference if a migration is backward-compatible. If not, restore volumes and keys together from a consistent pre-upgrade snapshot. Never use `docker compose down -v` in a rollback; it deletes persistent data.
+
+**Evidence required:** CI results are not equivalent to live provider checks. Document Ollama model/host versions, Bedrock model+region/role, the tested MCP harness versions and exact status, plus redacted request logs.
