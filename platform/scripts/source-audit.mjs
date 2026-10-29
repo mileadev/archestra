@@ -6,9 +6,9 @@
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { lstat, readFile, readlink, mkdir, writeFile } from "node:fs/promises";
 import { dirname, extname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const CODE_EXTENSIONS = new Set([
   ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".rs", ".go",
@@ -50,7 +50,13 @@ export async function inventoryRepository(root) {
 
   for (const name of names) {
     try {
-      const buffer = await readFile(join(root, name));
+      const filePath = join(root, name);
+      const stat = await lstat(filePath);
+      const buffer = stat.isSymbolicLink()
+        ? Buffer.from(await readlink(filePath))
+        : stat.isDirectory()
+          ? Buffer.from("gitlink")
+          : await readFile(filePath);
       bytes += buffer.length;
       sha.update(name);
       sha.update("\0");
@@ -58,7 +64,7 @@ export async function inventoryRepository(root) {
       const ext = extname(name).toLowerCase();
       const isCode = CODE_EXTENSIONS.has(ext) ||
         /(^|\/)(Dockerfile|Makefile|Containerfile|Tiltfile)$/.test(name);
-      if (!isCode || buffer.includes(0)) {
+      if (!isCode || !stat.isFile() || buffer.includes(0)) {
         binaryOrNonCodeFiles++;
         continue;
       }
@@ -97,7 +103,7 @@ export async function inventoryRepository(root) {
 }
 
 const mainPath = process.argv[1];
-if (mainPath && import.meta.url === new URL(`file://${resolve(mainPath)}`).href) {
+if (mainPath && import.meta.url === pathToFileURL(resolve(mainPath)).href) {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
   try {
     const report = await inventoryRepository(root);
